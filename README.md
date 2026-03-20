@@ -1,1 +1,486 @@
-# myWEB.test
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Thesis Studio - Astrophysics & Biology</title>
+  <style>
+    * { box-sizing: border-box; }
+    body, html {
+      margin: 0; padding: 0; width: 100%; height: 100%;
+      overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #050510; color: white;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    #bg-canvas {
+      display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0;
+    }
+    /* UI Elements */
+    .ui-container {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 10; pointer-events: none;
+      display: flex; flex-direction: column; justify-content: space-between;
+    }
+    .header {
+      display: flex; justify-content: flex-end; padding: 15px 20px; pointer-events: auto;
+    }
+    select {
+      background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3);
+      padding: 8px 12px; border-radius: 20px; outline: none; cursor: pointer;
+      backdrop-filter: blur(5px); font-size: 1rem;
+    }
+    select option { background: #1a1a2e; color: white; }
+    /* Main Content Glassmorphism */
+    .content-wrapper {
+      flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 0 15px;
+    }
+    .content-box {
+      background: rgba(10, 10, 25, 0.65); backdrop-filter: blur(12px);
+      padding: 30px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.15);
+      text-align: center; width: 100%; max-width: 600px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      pointer-events: auto; transition: all 0.3s ease;
+      user-select: text;
+    }
+    h1 { font-size: 2.2rem; margin: 0 0 15px 0; text-shadow: 0 0 10px rgba(255,255,255,0.5); }
+    p { font-size: 1.1rem; line-height: 1.6; margin-bottom: 25px; }
+    .x-link {
+      display: inline-block; padding: 12px 24px;
+      background: linear-gradient(45deg, #1DA1F2, #0d8bd9); color: white;
+      text-decoration: none; border-radius: 30px; font-weight: bold; font-size: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .x-link:hover, .x-link:active { transform: scale(1.05); box-shadow: 0 5px 15px rgba(29,161,242,0.6); }
+    /* Theme controls */
+    .theme-controls {
+      padding: 15px; display: flex; gap: 10px; justify-content: center; pointer-events: auto;
+      flex-wrap: wrap; margin-bottom: 10px;
+    }
+    .theme-btn {
+      background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.3);
+      padding: 12px 20px; border-radius: 25px; cursor: pointer; backdrop-filter: blur(5px);
+      font-size: 1rem; transition: all 0.3s; flex: 1 1 auto; max-width: 200px; text-align: center;
+    }
+    .theme-btn:hover, .theme-btn:active { background: rgba(255,255,255,0.35); font-weight: bold; box-shadow: 0 0 15px rgba(255,255,255,0.2); }
+    .theme-btn.active {
+      background: rgba(255,255,255,0.4);
+      border-color: rgba(255,255,255,0.8);
+      box-shadow: 0 0 20px rgba(255,255,255,0.3);
+    }
+    /* スマートフォン向けレスポンシブ設定 – ボタンをさらに小さく */
+    @media (max-width: 600px) {
+      h1 { font-size: 1.8rem; }
+      p { font-size: 1rem; }
+      .content-box { padding: 25px 20px; }
+      .x-link { padding: 10px 15px; font-size: 0.9rem; }
+      .theme-controls { gap: 6px; }
+      .theme-btn { padding: 8px 8px; font-size: 0.8rem; max-width: 130px; }
+      select { font-size: 0.85rem; padding: 6px 10px; }
+    }
+    /* さらに小さい画面 (400px以下) ではボタンを縦積み気味に */
+    @media (max-width: 400px) {
+      .theme-controls { flex-direction: column; align-items: center; }
+      .theme-btn { width: 80%; max-width: 200px; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="ui-container">
+    <div class="header">
+      <select id="lang-select">
+        <option value="en">English</option>
+        <option value="ja">日本語</option>
+        <option value="zh">中文</option>
+        <option value="ru">Русский</option>
+      </select>
+    </div>
+    <div class="content-wrapper">
+      <div class="content-box">
+        <h1 id="t-name">Thesis Studio</h1>
+        <p id="t-intro">I'm a junior high school student with a keen interest in biology, genetics, and astrophysics—especially galaxies. I occasionally work on updating my thesis !</p>
+        <a href="https://twitter.com/" target="_blank" class="x-link" id="t-x">X : Thesis studio : astrophysics, biology</a>
+      </div>
+    </div>
+    <div class="theme-controls">
+      <div class="theme-btn active" onclick="setTheme('space')" id="t-btn-space">Astrophysics</div>
+      <div class="theme-btn" onclick="setTheme('earth')" id="t-btn-earth">Biology</div>
+      <div class="theme-btn" onclick="setTheme('genetics')" id="t-btn-genetics">Genetics</div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- 多言語対応 ----------
+    const i18n = {
+      en: {
+        name: "Thesis Studio",
+        intro: "I'm a junior high school student with a keen interest in biology, genetics, and astrophysics—especially galaxies. I occasionally work on updating my thesis !",
+        x: "X : Thesis studio : astrophysics, biology",
+        space: "Astrophysics", earth: "Biology", genetics: "Genetics"
+      },
+      ja: {
+        name: "Thesis Studio",
+        intro: "中学生ですが、生物学・遺伝学・天体物理学（特に銀河）に強い興味があります。時々論文を更新しています！",
+        x: "X アカウント: Thesis studio",
+        space: "天体物理", earth: "生物学", genetics: "遺伝学"
+      },
+      zh: {
+        name: "Thesis Studio",
+        intro: "我是一名对生物学、遗传学和天体物理学（特别是星系）有着浓厚兴趣的初中生。我偶尔也会更新我的论文！",
+        x: "X 账号: Thesis studio",
+        space: "天体物理", earth: "生物学", genetics: "遗传学"
+      },
+      ru: {
+        name: "Thesis Studio",
+        intro: "Я ученик средней школы, увлекающийся биологией, генетикой и астрофизикой — особенно галактиками. Периодически обновляю свою диссертацию!",
+        x: "X Аккаунт: Thesis studio",
+        space: "Астрофизика", earth: "Биология", genetics: "Генетика"
+      }
+    };
+
+    const langSelect = document.getElementById('lang-select');
+    langSelect.addEventListener('change', (e) => {
+      const lang = e.target.value;
+      document.getElementById('t-name').innerText = i18n[lang].name;
+      document.getElementById('t-intro').innerText = i18n[lang].intro;
+      document.getElementById('t-x').innerText = i18n[lang].x;
+      document.getElementById('t-btn-space').innerText = i18n[lang].space;
+      document.getElementById('t-btn-earth').innerText = i18n[lang].earth;
+      document.getElementById('t-btn-genetics').innerText = i18n[lang].genetics;
+    });
+
+    // ---------- キャンバスとアニメーションの設定 ----------
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    let currentTheme = 'space';
+    let entities = [];
+    let blackHole = { active: false, radius: 0, x: 0, y: 0 };
+    let quasar = { active: false, timer: 0 };
+    let spaceTimer = 0;
+    let dnaPhase = 0;
+
+    // ---------- ギミック発動 (キーボード & タッチ/クリック) ----------
+    let keyBuffer = "";
+    window.addEventListener('keydown', (e) => {
+      keyBuffer += e.key.toLowerCase();
+      if (keyBuffer.length > 10) keyBuffer = keyBuffer.slice(-10);
+      if (keyBuffer.includes('bh') && currentTheme === 'space') { triggerGimmick(); keyBuffer = ""; }
+      if (keyBuffer.includes('frog') && currentTheme === 'earth') { triggerGimmick(); keyBuffer = ""; }
+    });
+
+    let lastTap = 0;
+    canvas.addEventListener('touchend', (e) => {
+      let currentTime = new Date().getTime();
+      let tapLength = currentTime - lastTap;
+      if (tapLength < 400 && tapLength > 0) { triggerGimmick(); e.preventDefault(); }
+      lastTap = currentTime;
+    });
+    canvas.addEventListener('dblclick', triggerGimmick);
+
+    // ギミック発動関数
+    function triggerGimmick() {
+      if (currentTheme === 'space' && !blackHole.active) {
+        blackHole.active = true;
+        blackHole.radius = 2;
+        blackHole.x = width / 2;
+        blackHole.y = height / 2;
+      } else if (currentTheme === 'earth') {
+        for (let i = 0; i < 15; i++) entities.push(new Frog());
+      } else if (currentTheme === 'genetics') {
+        // 細胞が一斉に分裂・活性化する
+        let currentCells = [...entities];
+        currentCells.forEach(cell => {
+          if (entities.length < 80 && cell instanceof Cell) {
+            cell.splitTimer = 0; // すぐ分裂するように
+          }
+        });
+      }
+    }
+
+    // ---------- テーマ切り替え ----------
+    function setTheme(theme) {
+      currentTheme = theme;
+      entities = [];
+      document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`t-btn-${theme}`).classList.add('active');
+
+      if (theme === 'space') {
+        let starCount = width < 600 ? 100 : 250;
+        for (let i = 0; i < starCount; i++) entities.push(new Star());
+        blackHole.active = false;
+        spaceTimer = 0;
+      } else if (theme === 'earth') {
+        let leafCount = width < 600 ? 30 : 60;
+        for (let i = 0; i < 3; i++) entities.push(new Frog());
+        for (let i = 0; i < leafCount; i++) entities.push(new Leaf());
+      } else if (theme === 'genetics') {
+        let cellCount = width < 600 ? 15 : 30;
+        for (let i = 0; i < cellCount; i++) entities.push(new Cell());
+      }
+    }
+
+    // ---------- オブジェクトクラス定義 ----------
+    class Star {
+      constructor() { this.reset(true); }
+      reset(randomize = false) {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.z = Math.random() * 2 + 0.5;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        if (!randomize) {
+          if (Math.random() > 0.5) this.x = Math.random() > 0.5 ? -10 : width + 10;
+          else this.y = Math.random() > 0.5 ? -10 : height + 10;
+        }
+      }
+      update() {
+        if (blackHole.active) {
+          let dx = blackHole.x - this.x;
+          let dy = blackHole.y - this.y;
+          let dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < blackHole.radius) {
+            this.reset();
+            return; // リセットしたらそれ以上計算しない
+          }
+          // 重力と渦巻き効果
+          let force = 2500 / (dist * dist + 10);
+          this.vx += (dx / dist) * force;
+          this.vy += (dy / dist) * force;
+          // 渦巻き効果
+          this.vx += (dy / dist) * force * 0.6;
+          this.vy -= (dx / dist) * force * 0.6;
+        }
+        this.x += this.vx;
+        this.y += this.vy;
+        if (!blackHole.active) {
+          if (this.x < 0) this.x = width;
+          if (this.x > width) this.x = 0;
+          if (this.y < 0) this.y = height;
+          if (this.y > height) this.y = 0;
+        }
+      }
+      draw() {
+        ctx.fillStyle = `rgba(255, 255, 255, ${this.z / 2.5})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.z, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    class Frog {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = height + 50; // 下から登場
+        this.vx = (Math.random() > 0.5 ? 1 : -1) * (Math.random() * 2 + 1);
+        this.vy = -(Math.random() * 12 + 8);
+        this.gravity = 0.4;
+        this.size = Math.random() * 20 + 25;
+      }
+      update() {
+        this.vy += this.gravity;
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.y > height) {
+          this.y = height;
+          this.vy = -(Math.random() * 10 + 8); // バウンド
+        }
+        if (this.x > width + 50) this.x = -50;
+        if (this.x < -50) this.x = width + 50;
+      }
+      draw() {
+        ctx.font = `${this.size}px sans-serif`;
+        ctx.fillStyle = '#88ff88';
+        ctx.fillText('🐸', this.x - this.size/2, this.y); // カエル絵文字
+      }
+    }
+
+    class Leaf {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 1.5;
+        this.vy = Math.random() * 1.5 + 0.5;
+        this.angle = Math.random() * Math.PI;
+      }
+      update() {
+        this.x += this.vx + Math.sin(this.angle) * 0.5;
+        this.y += this.vy;
+        this.angle += 0.03;
+        if (this.y > height + 20) { this.y = -20; this.x = Math.random() * width; }
+        if (this.x > width + 20) this.x = -20;
+        if (this.x < -20) this.x = width + 20;
+      }
+      draw() {
+        ctx.fillStyle = 'rgba(50,160,50,0.6)';
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 12, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class Cell {
+      constructor(x, y) {
+        this.x = x || Math.random() * width;
+        this.y = y || Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 1.2;
+        this.vy = (Math.random() - 0.5) * 1.2;
+        this.radius = Math.random() * 12 + 10;
+        this.splitTimer = Math.random() * 800 + 400;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        if (this.x < -20 || this.x > width + 20) this.vx *= -1;
+        if (this.y < -20 || this.y > height + 20) this.vy *= -1;
+        this.splitTimer--;
+        if (this.splitTimer <= 0 && entities.length < 80) {
+          this.radius = Math.max(5, this.radius * 0.8);
+          let child = new Cell(this.x, this.y);
+          child.radius = this.radius;
+          child.vx = -this.vx + (Math.random() - 0.5);
+          child.vy = -this.vy + (Math.random() - 0.5);
+          entities.push(child);
+          this.splitTimer = Math.random() * 1000 + 800;
+        }
+      }
+      draw() {
+        ctx.strokeStyle = 'rgba(0,255,180,0.5)';
+        ctx.fillStyle = 'rgba(0,255,180,0.15)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // 核
+        ctx.fillStyle = 'rgba(0,150,255,0.7)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,150,255,0.9)';
+        ctx.stroke();
+      }
+    }
+
+    // DNA描画 (遺伝学テーマ用)
+    function drawDNA() {
+      dnaPhase += 0.04;
+      let centerX = width / 2;
+      let dnaHeight = height > 600 ? 600 : height;
+      let startY = (height - dnaHeight) / 2;
+
+      for (let i = 0; i < 30; i++) {
+        let y = startY + i * (dnaHeight / 30);
+        let offset = Math.sin(dnaPhase + i * 0.25) * (width < 600 ? 60 : 120);
+        let size1 = Math.cos(dnaPhase + i * 0.25) * 3 + 4;
+        let size2 = Math.cos(dnaPhase + Math.PI + i * 0.25) * 3 + 4;
+
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(centerX + offset, y);
+        ctx.lineTo(centerX - offset, y);
+        ctx.stroke();
+
+        ctx.fillStyle = '#ff3366';
+        ctx.beginPath();
+        ctx.arc(centerX + offset, y, Math.max(0.5, size1), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#33ccff';
+        ctx.beginPath();
+        ctx.arc(centerX - offset, y, Math.max(0.5, size2), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // ---------- アニメーションメインループ ----------
+    function animate() {
+      // 背景塗りつぶし
+      if (currentTheme === 'space') ctx.fillStyle = '#050510';
+      else if (currentTheme === 'earth') ctx.fillStyle = '#87CEEB';
+      else if (currentTheme === 'genetics') ctx.fillStyle = '#0d1a26';
+      ctx.fillRect(0, 0, width, height);
+
+      if (currentTheme === 'space') {
+        spaceTimer++;
+        if (spaceTimer === 720 && !blackHole.active) triggerGimmick();
+
+        if (Math.random() < 0.0015 && !quasar.active) {
+          quasar.active = true; quasar.timer = 60;
+        }
+
+        // 星の更新と描画
+        for (let i = entities.length - 1; i >= 0; i--) {
+          entities[i].update();
+          entities[i].draw();
+        }
+
+        // ブラックホール描画
+        if (blackHole.active) {
+          let maxRadius = width < 600 ? 35 : 60;
+          if (blackHole.radius < maxRadius) blackHole.radius += 0.15;
+
+          // 降着円盤
+          let gradient = ctx.createRadialGradient(blackHole.x, blackHole.y, blackHole.radius, blackHole.x, blackHole.y, blackHole.radius * 3);
+          gradient.addColorStop(0, 'black');
+          gradient.addColorStop(0.15, 'rgba(255, 120, 0, 0.8)');
+          gradient.addColorStop(1, 'transparent');
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(blackHole.x, blackHole.y, blackHole.radius * 3, 0, Math.PI * 2);
+          ctx.fill();
+
+          // 事象の地平面
+          ctx.fillStyle = 'black';
+          ctx.beginPath();
+          ctx.arc(blackHole.x, blackHole.y, blackHole.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // クエーサー描画
+        if (quasar.active) {
+          ctx.fillStyle = `rgba(200, 230, 255, ${quasar.timer / 150})`;
+          ctx.fillRect(0, 0, width, height);
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${quasar.timer / 60})`;
+          let qx = blackHole.active ? blackHole.x : width / 2;
+          let qy = blackHole.active ? blackHole.y : height / 2;
+          ctx.fillRect(qx - 4, 0, 8, height);
+          ctx.fillRect(0, qy - 4, width, 8);
+
+          quasar.timer--;
+          if (quasar.timer <= 0) quasar.active = false;
+        }
+
+      } else {
+        // earth または genetics
+        for (let i = entities.length - 1; i >= 0; i--) {
+          entities[i].update();
+          entities[i].draw();
+        }
+        if (currentTheme === 'genetics') drawDNA();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    // 初期化
+    window.onload = () => {
+      setTheme('space');
+      animate();
+    };
+  </script>
+</body>
+</html>
